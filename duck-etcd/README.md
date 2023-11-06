@@ -1,12 +1,12 @@
-# duck-etcd
+# duck-etcd (WIP)
 
 > If it writes like an etcd and it reads like an etcd, then it must be an etcd.
 
-A toy KV store written in purely bash.
+A toy KV store written in pure bash.
 
 Features implemented:
 
-- put, del, get, watch
+- basic ops (put, del, get, watch)
 - prefix support
 - full revision support (including create & mod revision)
 - `etcd` & `etcdctl` command
@@ -14,7 +14,7 @@ Features implemented:
 Basic ideas behind the scene:
 
 - use a single text file to store data
-- use line number as revision
+- use line numbers as revisions
 - use `socat` as communication channel (some damn edge cases need to be taken care of)
 - server forks sub-processes to handle concurrent requests
 - use `flock` to protect concurrent writes
