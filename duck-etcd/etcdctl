@@ -5,14 +5,18 @@ set -o pipefail
 server_addr=127.0.0.1:2379
 
 usage() {
+    local errmsg=${1}
     local name
     name=$(basename "$0")
+
+    [[ -n $errmsg ]] && echo >&2 "Error: $errmsg" && echo >&2
 
     cat >&2 <<EOF
 Usage: ${name} [global options] {put,del,get,watch} [options] [key] [value]
 
 Global Options:
     -s/--server addr, default 127.0.0.1:2379
+    -h/--help
 
 Examples:
     ${name} put key value
@@ -41,7 +45,7 @@ request() {
 
 parse_args() {
     rev=0 prefix=0
-    local -a positions
+    local -a args
 
     while (($#)); do
         case ${1} in
@@ -59,19 +63,25 @@ parse_args() {
             ;;
         -h | --help) usage ;;
         -*)
-            echo >&2 "unknown flag: '${1}'"
-            usage
+            usage "unknown flag: '${1}'"
             ;;
         *)
-            positions+=("${1}")
+            args+=("${1}")
             shift
             ;;
         esac
     done
 
-    action=${positions[0]}
-    key=${positions[1]}
-    value=${positions[2]}
+    action=${args[0]}
+    key=${args[1]}
+    value=${args[2]}
+    local argc=${#args[@]}
+    case $action in
+    get | watch | del) ((argc == 2)) || usage "Wrong number of args: ${argc}" ;;
+    put) ((argc == 3)) || usage "Wrong number of args: ${argc}" ;;
+    "") usage "No action provided" ;;
+    *) usage "Unknown action: ${action}" ;;
+    esac
 }
 
 main() {
@@ -88,7 +98,7 @@ main() {
     get | watch)
         msg="rev=${rev} prefix=${prefix} ${action} ${key}"
         ;;
-    *) usage ;;
+    *) ;;
     esac
 
     request
