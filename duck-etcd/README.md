@@ -19,6 +19,14 @@ Basic ideas behind the scene:
 - server forks sub-processes to handle concurrent requests
 - use `flock` to protect concurrent writes
 
+## Requirements
+
+- linux (cause I use `flock`, which is a command from `util-linux`)
+- bash (version 5 or higher)
+- socat
+
+Tested on `Arch Linux` with `bash 5`, might not work with other linux distros or older bash versions.
+
 ## Usage
 
 Run the server

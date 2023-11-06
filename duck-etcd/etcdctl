@@ -4,7 +4,27 @@ set -o pipefail
 
 server_addr=127.0.0.1:2379
 
-req() {
+usage() {
+    local name
+    name=$(basename "$0")
+
+    cat >&2 <<EOF
+Usage: ${name} [global options] {put,del,get,watch} [options] [key] [value]
+
+Global Options:
+    -s/--server addr, default 127.0.0.1:2379
+
+Examples:
+    ${name} put key value
+    ${name} del key
+    ${name} get [--prefix] [--rev 0] key
+    ${name} watch [--prefix] [--rev 0] key
+EOF
+
+    exit 1
+}
+
+request() {
     local fifo
     fifo=$(mktemp --dry-run)
     mkfifo "${fifo}"
@@ -21,48 +41,57 @@ req() {
 
 parse_args() {
     rev=0 prefix=0
+    local -a positions
+
     while (($#)); do
         case ${1} in
+        -s | --server)
+            server_addr=${2}
+            shift 2
+            ;;
         --rev)
-            rev=$2
+            rev=${2}
             shift 2
             ;;
         --prefix)
             prefix=1
             shift
             ;;
+        -h | --help) usage ;;
         -*)
             echo >&2 "unknown flag: '${1}'"
+            usage
             ;;
-        *) ;;
+        *)
+            positions+=("${1}")
+            shift
+            ;;
         esac
     done
+
+    action=${positions[0]}
+    key=${positions[1]}
+    value=${positions[2]}
 }
 
 main() {
-    action=${1}
-    shift
+    parse_args "$@"
+
     case $action in
     put)
-        key=${1}
-        value=${2}
         # TODO: better to be quoted
         msg="put ${key} ${value}"
         ;;
     del)
-        key=${1}
         msg="del ${key}"
         ;;
     get | watch)
-        key=${1}
-        shift
-        parse_args "$@"
         msg="rev=${rev} prefix=${prefix} ${action} ${key}"
         ;;
-    *) ;;
+    *) usage ;;
     esac
 
-    req
+    request
 }
 
 main "$@"
