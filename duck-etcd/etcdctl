@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+
+set -o pipefail
+
+server_addr=127.0.0.1:2379
+
+usage() {
+    local errmsg=${1}
+    local name
+    name=$(basename "$0")
+
+    [[ -n $errmsg ]] && echo >&2 "Error: $errmsg" && echo >&2
+
+    cat >&2 <<EOF
+Usage: ${name} [global options] {put,del,get,watch} [options] [key] [value]
+
+Global Options:
+    -s/--server addr, default 127.0.0.1:2379
+    -h/--help
+
+Examples:
+    ${name} put key value
+    ${name} del key
+    ${name} get [--prefix] [--rev 0] key
+    ${name} watch [--prefix] [--rev 0] key
+EOF
+
+    exit 1
+}
+
+parse_args() {
+    rev=0 prefix=0
+    local -a args
+
+    while (($#)); do
+        case ${1} in
+        -s | --server)
+            server_addr=${2}
+            shift 2
+            ;;
+        --rev)
+            rev=${2}
+            shift 2
+            ;;
+        --prefix)
+            prefix=1
+            shift
+            ;;
+        -h | --help) usage ;;
+        -*)
+            usage "unknown flag: '${1}'"
+            ;;
+        *)
+            args+=("${1}")
+            shift
+            ;;
+        esac
+    done
+
+    action=${args[0]} key=${args[1]} value=${args[2]}
+    local argc=${#args[@]}
+    case $action in
+    get | watch | del) ((argc == 2)) || usage "Wrong number of args: ${argc}" ;;
+    put) ((argc == 3)) || usage "Wrong number of args: ${argc}" ;;
+    "") usage "No action provided" ;;
+    *) usage "Unknown action: ${action}" ;;
+    esac
+}
+
+request() {
+    local fifo
+    fifo=$(mktemp --dry-run)
+    mkfifo "${fifo}"
+    exec 3<>"${fifo}"
+    rm -f "${fifo}"
+
+    socat tcp:"${server_addr}" - <&3 &
+    socat_pid=$!
+
+    echo "${msg}" >&3
+
+    wait $socat_pid
+}
+
+main() {
+    parse_args "$@"
+
+    case $action in
+    put)
+        # TODO: better to be quoted
+        msg="put ${key} ${value}"
+        ;;
+    del)
+        msg="del ${key}"
+        ;;
+    get | watch)
+        msg="rev=${rev} prefix=${prefix} ${action} ${key}"
+        ;;
+    *) ;;
+    esac
+
+    request
+}
+
+main "$@"
