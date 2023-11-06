@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+port=2379
+
+socat tcp-l:"${port}",fork,reuseaddr exec:./handler.sh,nofork,fdin=10,fdout=11
