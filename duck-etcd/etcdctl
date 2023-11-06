@@ -28,21 +28,6 @@ EOF
     exit 1
 }
 
-request() {
-    local fifo
-    fifo=$(mktemp --dry-run)
-    mkfifo "${fifo}"
-    exec 3<>"${fifo}"
-    rm -f "${fifo}"
-
-    socat tcp:"${server_addr}" - <&3 &
-    socat_pid=$!
-
-    echo "${msg}" >&3
-
-    wait $socat_pid
-}
-
 parse_args() {
     rev=0 prefix=0
     local -a args
@@ -72,9 +57,7 @@ parse_args() {
         esac
     done
 
-    action=${args[0]}
-    key=${args[1]}
-    value=${args[2]}
+    action=${args[0]} key=${args[1]} value=${args[2]}
     local argc=${#args[@]}
     case $action in
     get | watch | del) ((argc == 2)) || usage "Wrong number of args: ${argc}" ;;
@@ -82,6 +65,21 @@ parse_args() {
     "") usage "No action provided" ;;
     *) usage "Unknown action: ${action}" ;;
     esac
+}
+
+request() {
+    local fifo
+    fifo=$(mktemp --dry-run)
+    mkfifo "${fifo}"
+    exec 3<>"${fifo}"
+    rm -f "${fifo}"
+
+    socat tcp:"${server_addr}" - <&3 &
+    socat_pid=$!
+
+    echo "${msg}" >&3
+
+    wait $socat_pid
 }
 
 main() {

@@ -4,6 +4,9 @@ set -o pipefail
 
 db=/tmp/etcd
 lock=/tmp/etcd.lock
+fdin=10
+fdout=11
+fdtmp=12
 
 lock() {
     exec 3<>"${lock}"
@@ -27,14 +30,13 @@ put() {
 
 del() {
     lock
-    # TODO: avoid duplicated deletions
-    # TODO: don't do anything when key doesn't exist
-    echo DEL "${1}" >>"${db}"
+    # only delete when we can get the key, i.e. exists and has not been deleted yet.
+    get "${1}" &>/dev/null &&
+        echo DEL "${1}" >>"${db}"
     unlock
 }
 
 _output() {
-    # echo >&11 "$@"
     echo "$@"
 }
 
@@ -79,12 +81,15 @@ _scan_db() {
 
     ((get)) || return
 
-    _output "count=${#values[@]}"
+    local count=${#values[@]}
+    _output "count=${count}"
     for k in "${!values[@]}"; do
         _output "create=$((create_rev[${k}])) mod=$((mod_rev[${k}])) version=$((seen[${k}]))"
         _output "${k}"
         _output "${values[${k}]}"
     done
+
+    ((count)) || return 1
 }
 
 get() {
@@ -121,13 +126,13 @@ main() {
     exec 12<>"${fifo}"
     rm -f "${fifo}"
 
-    exec 1>&11
+    exec 1>&${fdout}
 
-    cat <&10 >&12 &
+    cat <&${fdin} >&${fdtmp} &
     read_pid=$!
 
     local cmd
-    read -u 12 -r cmd
+    read -u ${fdtmp} -r cmd
     local rev=0 prefix=0
     # NOTE: this is extremely unsafe, just for convenience
     eval "${cmd}" &
