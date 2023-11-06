@@ -7,5 +7,5 @@ I did this for fun, learning and demonstration purpose.
 
 Currently implemented programs:
 
-- etcd (duck-etcd) (WIP)
-- flannel (ragged-flannel) (COMING SOON)
+- `etcd`, one of the most popular KV store - [`duck-etcd`](./duck-etcd) (WIP)
+- `flannel`, one of the most popular network plugin for `K8s` - [ragged-flannel](./ragged-flannel) (COMING SOON)
