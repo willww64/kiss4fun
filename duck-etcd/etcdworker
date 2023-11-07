@@ -57,12 +57,15 @@ _scan_db() {
     local get=${get:-0}
 
     local k v rev
+
+    local prev_value value
     # shellcheck disable=SC2312
     while read -r action k v; do
         rev=$((start++))
 
         match "${k}" "${key}" || continue
 
+        prev_value=${values[$k]}
         values[${k}]=${v}
         mod_rev[${k}]=${rev}
         ((seen[${k}]++)) || create_rev[${k}]=${rev}
@@ -71,10 +74,12 @@ _scan_db() {
 
         ((watch)) || continue
 
+        [[ ${action} == DEL ]] && ((prev_kv)) &&
+            value=${prev_value} || value=${values[${k}]}
         _output "rev=${rev} create=$((create_rev[${k}])) mod=$((mod_rev[${k}])) version=$((seen[${k}]))"
         _output "${action}"
         _output "${k}"
-        _output "${values[${k}]}"
+        _output "${value}"
     done < <(
         ((watch)) && tail -n +"${start}" -f "${db}" || head -n "${end}" "${db}"
     )
@@ -119,6 +124,7 @@ watch() {
 
 main() {
     trap '[[ -z "$(jobs -p)" ]] || kill $(jobs -p)' EXIT
+    touch "${db}"
 
     local fifo
     fifo=$(mktemp --dry-run)
@@ -133,7 +139,7 @@ main() {
 
     local cmd
     read -u ${fdtmp} -r cmd
-    local rev=0 prefix=0
+    local rev=0 prefix=0 prev_kv=0
     # NOTE: this is extremely unsafe, just for convenience
     eval "${cmd}" &
     write_pid=$!
