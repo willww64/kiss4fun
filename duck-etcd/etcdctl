@@ -22,14 +22,14 @@ Examples:
     ${name} put key value
     ${name} del key
     ${name} get [--prefix] [--rev 0] key
-    ${name} watch [--prefix] [--rev 0] key
+    ${name} watch [--prefix] [--rev 0] [--prev-kv] key
 EOF
 
     exit 1
 }
 
 parse_args() {
-    rev=0 prefix=0
+    rev=0 prefix=0 prev_kv=0
     local -a args
 
     while (($#)); do
@@ -44,6 +44,10 @@ parse_args() {
             ;;
         --prefix)
             prefix=1
+            shift
+            ;;
+        --prev-kv)
+            prev_kv=1
             shift
             ;;
         -h | --help) usage ;;
@@ -94,7 +98,7 @@ main() {
         msg="del ${key}"
         ;;
     get | watch)
-        msg="rev=${rev} prefix=${prefix} ${action} ${key}"
+        msg="rev=${rev} prefix=${prefix} prev_kv=${prev_kv} ${action} ${key}"
         ;;
     *) ;;
     esac
