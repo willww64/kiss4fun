@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2312
+
+set -o pipefail
+
+# terminology:
+#   ip_network      10.244.1.0/24
+#   ip_interface    10.244.1.5/24
+#   ip_address      10.244.1.6
+#   ip_prefix       10.244.1
+#   network_prefix  24
+
+ifdev=ens2
+etcd_addr=192.168.30.1:2379
+rev_file=/tmp/revision
+
+get_ip() {
+    ip -j -4 addr show "${1}" | jq -r '.[0].addr_info[0].local'
+}
+
+get_mac() {
+    ip -j link show "${1}" | jq -r '.[0].address'
+}
+
+_etcd() {
+    etcdctl --server "$etcd_addr" "$@"
+}
+
+cleanup() {
+    set +e
+    echo cleaning up
+    ip netns del ns1 2>/dev/null
+    ip link del cni0 2>/dev/null
+    ip link del flannel.1 2>/dev/null
+    rm -f "${rev_file}"
+}
+
+prepare() {
+    sysctl -w net.ipv4.ip_forward=1
+}
+
+setup_veth() {
+    ip netns add ns1
+    ip link add veth1 type veth peer eth0 netns ns1
+    ip link set veth1 up master cni0
+    ip -n ns1 link set eth0 up
+    # NOTE: must bring up lo here, or the ip will not be pingable
+    ip -n ns1 link set lo up
+    ip -n ns1 addr add "${ip_prefix}.2/24" dev eth0
+    ip -n ns1 route add default via "${ip_prefix}.1" dev eth0
+}
+
+setup_cni0() {
+    ip link add cni0 type bridge
+    ip link set cni0 up
+    ip addr add "${ip_prefix}.1/24" dev cni0
+}
+
+setup_flannel1() {
+    ip link add flannel.1 type vxlan id 1 dstport 8472 local "$gw_ip" nolearning
+    ip link set flannel.1 up
+    ip addr add "${ip_prefix}.0/32" dev flannel.1
+
+}
+
+setup_local() {
+    echo start setup
+
+    gw_ip=$(get_ip $ifdev)
+
+    setup_cni0
+    setup_flannel1
+    setup_veth
+
+    flannel_mac=$(get_mac flannel.1)
+    echo setup finished
+
+    echo report data to etcd
+    _etcd put "/hosts/$HOSTNAME" "$gw_ip,${ip_prefix}.0,$flannel_mac"
+}
+
+peer_op() {
+    local op=${1}
+    ip neigh "${op}" "$flannel_ip" lladdr "$flannel_mac" dev flannel.1
+    bridge fdb "${op}" "$flannel_mac" dev flannel.1 dst "$peer_ip"
+    ip route "${op}" "$flannel_ip/24" via "$flannel_ip" dev flannel.1 onlink
+}
+
+list() {
+    local rev
+    read -r rev
+    read -r _count
+
+    local key value
+    while {
+        read -r _meta
+        read -r key
+        read -r value
+    }; do
+        [[ $key == "/hosts/$HOSTNAME" ]] && continue
+        IFS=, read -r peer_ip flannel_ip flannel_mac <<<"${value}"
+        peer_op add
+    done < <(_etcd get --prefix /hosts/)
+
+    echo "${rev}" >"${rev_file}"
+}
+
+watch() {
+    local from_rev
+    from_rev=$(cat "${rev_file}")
+    local rev
+    read -r rev
+
+    local meta event key value
+    while {
+        read -r meta
+        read -r event
+        read -r key
+        read -r value
+    }; do
+        local version
+        eval "${meta}"
+
+        local op=add
+        [[ $event == DEL ]] && op=delete
+        [[ $event == PUT ]] && ((version > 1)) && op=replace
+
+        IFS=, read -r peer_ip flannel_ip flannel_mac <<<"$value"
+        peer_op "${op}"
+
+        echo "${rev}" >"${rev_file}"
+    done < <(_etcd watch --rev="${from_rev}" --prefix --prev-kv /hosts/)
+}
+
+main() {
+    case ${1:-} in
+    delete)
+        _etcd del "/hosts/$HOSTNAME"
+        cleanup
+        ;;
+    run)
+        ip_prefix=$2
+        prepare
+        setup_local
+        [[ ! -s "${rev_file}" ]] && list
+        watch
+        ;;
+    *)
+        cat <<EOF
+Usage: $(basename "$0") [ACTION]
+
+Actions:
+    run <subnet>   set up then run sync loop
+    delete         remove local setup and delete key from etcd
+EOF
+        return 1
+        ;;
+    esac
+}
+
+main "$@"
