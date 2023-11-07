@@ -23,8 +23,9 @@ parse_args() {
 
 main() {
     parse_args "$@"
-
-    socat tcp-l:"${port}",fork,reuseaddr exec:./handler.sh,nofork,fdin=10,fdout=11
+    local workerpath
+    workerpath=$(realpath "$0")/etcdworker
+    socat tcp-l:"${port}",fork,reuseaddr exec:"${workerpath}",nofork,fdin=10,fdout=11
 }
 
 main "$@"
