@@ -14,17 +14,23 @@ Vagrant.configure("2") do |config|
       sudo cp /vagrant/duck-etcd/etcd* /vagrant/flanneld /usr/local/bin/
   SHELL
 
-  config.vm.define :controller do |controller|
-    controller.vm.network :private_network, :ip => "#{ip_prefix}.60"
-    controller.vm.hostname = "controller"
+  config.vm.define :etcd do |etcd|
+    etcd.vm.network :private_network, :ip => "#{ip_prefix}.60"
+    etcd.vm.hostname = "etcd"
+    etcd.vm.provision :shell, inline: <<-SHELL
+      systemd-run etcd
+    SHELL
   end
 
   (1..3).each do |i|
     name = "node#{i}"
     ip = "#{ip_prefix}.6#{i}"
-    config.vm.define name do |machine|
-      machine.vm.network :private_network, :ip => ip
-      machine.vm.hostname = name
+    config.vm.define name do |node|
+      node.vm.network :private_network, :ip => ip
+      node.vm.hostname = name
+      etcd.vm.provision :shell, inline: <<-SHELL
+        systemd-run flanneld run 10.244.#{i}
+      SHELL
     end
   end
 end
