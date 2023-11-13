@@ -14,7 +14,8 @@ There are 4 VMs defined in the `Vagrantfile`.
 The node name and corresponding IP addresses are as follows:
 
 | node name | host ip       | pod subnet    |
-| etcd      | 192.168.56.60 | -             |
+| --------- | ------------- | ------------- |
+| etcd      | 192.168.56.60 |               |
 | node1     | 192.168.56.61 | 10.244.1.0/24 |
 | node2     | 192.168.56.62 | 10.244.2.0/24 |
 | node3     | 192.168.56.63 | 10.244.3.0/24 |
