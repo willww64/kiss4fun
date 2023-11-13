@@ -28,7 +28,7 @@ Vagrant.configure("2") do |config|
     config.vm.define name do |node|
       node.vm.network :private_network, :ip => ip
       node.vm.hostname = name
-      etcd.vm.provision :shell, inline: <<-SHELL
+      node.vm.provision :shell, inline: <<-SHELL
         systemd-run flanneld run 10.244.#{i}
       SHELL
     end
