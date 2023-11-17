@@ -11,9 +11,10 @@ set -o pipefail
 
 # Default Vars
 global_base=~/.local/share/vm
-cloud_images_dir=~/.local/share/vm/cloud-images
+vms_base=${global_base}/vms
+cloud_images_base=${global_base}/cloud-images
 cloud_image=debian-12-genericcloud-amd64.qcow2
-backing_file=${cloud_images_dir}/${cloud_image}
+backing_file=${cloud_images_base}/${cloud_image}
 bridge=${bridge:-br0}
 cpu=${cpu:-1}
 memory=${memory:-1G}
@@ -62,9 +63,9 @@ network_config=$(
     cat <<EOF
 version: 2
 ethernets:
-  en:
+  eth:
     match:
-      name: en*
+      macaddress: ${macaddr}
     dhcp4: true
 EOF
 )
@@ -167,16 +168,16 @@ poweroff() {
 load_vm_vars() {
     local vmname=${1}
 
-    vm_dir=$global_base/$vmname
-    disk_file=$vm_dir/disk.qcow2
-    userdata_file=$vm_dir/userdata.img
+    vm_dir=${vms_base}/${vmname}
+    disk_file=${vm_dir}/disk.qcow2
+    userdata_file=${vm_dir}/userdata.img
 
-    vars_file=$vm_dir/vars
-    [[ -f $vars_file ]] && source "$vars_file"
+    vars_file=${vm_dir}/vars
+    [[ -f ${vars_file} ]] && source "${vars_file}"
 
-    serial_sock=$runtimed/${vmname}-serial
-    mon_sock=$runtimed/${vmname}-monitor
-    pidfile=$runtimed/${vmname}.pid
+    serial_sock=${runtimed}/${vmname}-serial
+    mon_sock=${runtimed}/${vmname}-monitor
+    pidfile=${runtimed}/${vmname}.pid
 }
 
 delete() {

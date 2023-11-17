@@ -4,9 +4,10 @@ NOTE: currently WIP, limited features & barely usable.
 
 A primitive `qemu` / `kvm` virtual machine manager written in pure bash.
 
-Support defining VMs by a `Vagrantfile`-like file called `vmfile`, see [examples](./examples).
+Support defining VMs by a `Vagrantfile`-like file called `vmfile`, see [examples](./examples). No need for `ruby`, `vagrant` or `libvirt`.
 
-No `libvirt`, no `ruby` & `vagrant`.
+Use `cloud-init` to initialize VMs.
+
 
 ## Compatibility
 
@@ -29,13 +30,26 @@ pacman -Syu qemu-base socat cdrtools
 ## Steps
 
 ```bash
+# download debian 12 cloud image
+make download-debian12
 make install
+
+# setup bridge network
 sudo vmnet br0 192.168.64.1
+
 cd examples/multiple-vms
-# create & run all the VMs
+# create & run all VMs
 vm up
+
 # connect the serial console of one of the VMs
+# you may need to hit enter if nothing is shown.
 vm console node1
+# TODO: add ssh example after finishing leveraging systemd-resolved
+
+# poweroff all VMs
+vm poweroff
+# delete all VMs
+vm delete
 ```
 
 ## TODO
@@ -43,7 +57,7 @@ vm console node1
 - [ ] clean up messy code
 - [ ] manage VMs without `vmfile` after creation
 - [ ] add usage
-- [ ] support more cloud images
+- [ ] support more cloud images, and cloud image management (list, delete, download)
 - [ ] support passing / customizing more `qemu` options
 - [ ] test on more Linux distributions & `qemu` versions
 - [ ] persistent network configurations

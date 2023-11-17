@@ -34,7 +34,7 @@ strict-order
 pid-file=/run/vm-dnsmasq.pid
 except-interface=lo
 bind-dynamic
-interface=vmbr0
+interface=${ifname}
 dhcp-range=${range_start},${range_end}
 dhcp-no-override
 dhcp-authoritative
