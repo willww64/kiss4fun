@@ -1,0 +1,24 @@
+# vi: set ft=sh :
+
+# Imagine this as a K8s cluster, one master node and two normal nodes.
+vms=(master node{1..2})
+
+# common variables for all VMs
+cpu=1
+memory=1G
+disk_size=40G
+
+config() {
+    case ${1} in
+    # specific variables for master
+    master)
+        cpu=2
+        memory=2G
+        ;;
+    # specific variables for all node
+    node*)
+        disk_size=20G
+        ;;
+    *) ;;
+    esac
+}

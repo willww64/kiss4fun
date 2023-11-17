@@ -13,5 +13,7 @@ There are 3 main types of scripts:
 
 Currently implemented:
 
-- `etcd`, one of the most popular KV store - [`duck-etcd`](./duck-etcd) (WIP)
-- `flannel`, one of the most popular network plugin for `K8s` - [ragged-flannel](./ragged-flannel) (WIP)
+- [duck-etcd](./duck-etcd) (WIP) `etcd`-like KV store implemented in pure bash.
+- [ragged-flannel](./ragged-flannel) (WIP), a pure bash implementation of `flannel`
+- [vm](./vm), a very simple, barely usable `qemu/kvm` virtual machine manager.
+    You can define multiple VMs in one `vmfile`, which is similar to `Vagrantfile`.

@@ -1,0 +1,7 @@
+# The following are all currently supported customizable variables
+bridge=br0
+cpu=1
+memory=1G
+disk_size=20G
+password=pAssw0rd
+ssh_pubkey=~/.ssh/id_ed25519.pub
