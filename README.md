@@ -17,3 +17,4 @@ Currently implemented:
 - [ragged-flannel](./ragged-flannel) (WIP), a pure bash implementation of `flannel`
 - [vm](./vm), a very simple, barely usable `qemu/kvm` virtual machine manager.
     You can define multiple VMs in one `vmfile`, which is similar to `Vagrantfile`.
+- [wgmgr](./wgmgr), a simple `wireguard` VPN server management script
